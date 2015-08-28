@@ -162,7 +162,7 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
     [super viewDidLoad];
     
     [self setTitle:[self.collection localizedTitle]];
-    [self.navigationItem setRightBarButtonItem:[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Import", NULL) style:UIBarButtonItemStylePlain target:self action:@selector(pickAssets:)]];
+    [self.navigationItem setRightBarButtonItem:[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Import", NULL) style:UIBarButtonItemStyleDone target:self action:@selector(pickAssets:)]];
 
     UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     [self setToolbarItems:@[
