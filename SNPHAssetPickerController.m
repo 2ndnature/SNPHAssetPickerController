@@ -1,6 +1,6 @@
 //
 //  SNPHAssetPickerController.m
-//  PhotoTest
+//  SNPHAssetPickerController
 //
 //  Created by Brian Gerfort on 27/08/15.
 //  Copyright © 2015 2ndNature. All rights reserved.
