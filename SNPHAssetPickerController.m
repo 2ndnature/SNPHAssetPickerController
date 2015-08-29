@@ -341,10 +341,11 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
+    CGFloat mainScreenScale = [UIScreen mainScreen].scale;
     SNPHAssetPickerAssetCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:SNPHAssetPickerAssetCellIdentifier forIndexPath:indexPath];
     PHAsset *asset = [self.assets objectAtIndex:indexPath.row];
     [cell setPicked:[self.picks containsObject:asset]];
-    [[PHImageManager defaultManager] requestImageForAsset:asset targetSize:CGSizeMake(MAXIMUM_ITEM_SIZE, MAXIMUM_ITEM_SIZE) contentMode:PHImageContentModeAspectFill options:nil resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
+    [[PHImageManager defaultManager] requestImageForAsset:asset targetSize:CGSizeMake(MAXIMUM_ITEM_SIZE * mainScreenScale, MAXIMUM_ITEM_SIZE * mainScreenScale) contentMode:PHImageContentModeAspectFill options:nil resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
         
         [[(SNPHAssetPickerAssetCell *)[collectionView cellForItemAtIndexPath:indexPath] imageView] setImage:result];
         
@@ -403,15 +404,11 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
     PHFetchOptions *fetchOptions = [PHFetchOptions new];
     fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
     if (onlyImages) fetchOptions.predicate = [NSPredicate predicateWithFormat:@"(mediaType = %d)", PHAssetMediaTypeImage];
-    fetchOptions.fetchLimit = 3;
 
     PHFetchResult *thumbnailFetchResult = [PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions];
-    collection.thumbnailAssets = [thumbnailFetchResult objectsAtIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [thumbnailFetchResult count])]];
     
-    fetchOptions.fetchLimit = 0;
-
-    collection.assetCount = [assetCollection estimatedAssetCount];
-    if (collection.assetCount == NSNotFound || onlyImages) collection.assetCount = [[PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions] count];
+    collection.assetCount = [thumbnailFetchResult count];
+    collection.thumbnailAssets = [thumbnailFetchResult objectsAtIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, (collection.assetCount < 3) ? collection.assetCount : 3)]];
     
     return collection;
 }
@@ -524,7 +521,8 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
         
         PHImageManager *imageManager = [PHImageManager defaultManager];
         CGFloat cellHeight = self.contentView.bounds.size.height;
-        CGSize targetSize = (cellHeight > MAXIMUM_ITEM_SIZE) ? CGSizeMake(cellHeight, cellHeight) : CGSizeMake(MAXIMUM_ITEM_SIZE, MAXIMUM_ITEM_SIZE);
+        CGFloat mainScreenScale = [UIScreen mainScreen].scale;
+        CGSize targetSize = (cellHeight > MAXIMUM_ITEM_SIZE * mainScreenScale) ? CGSizeMake(cellHeight, cellHeight) : CGSizeMake(MAXIMUM_ITEM_SIZE * mainScreenScale, MAXIMUM_ITEM_SIZE * mainScreenScale);
         if (thumbnailCount > 0)
         {
             [imageManager requestImageForAsset:[_collectionItem.thumbnailAssets objectAtIndex:0] targetSize:targetSize contentMode:PHImageContentModeAspectFill options:nil resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
