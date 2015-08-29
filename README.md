@@ -11,8 +11,6 @@ Example usage:
         }
         
     }];
-    [picker setOnlyImages:YES];
-    [picker setModalPresentationStyle:UIModalPresentationFormSheet];
     [self presentViewController:picker animated:YES completion:NULL];
 
 To use it in your own project add the Photos.framework and the SNPHAssetPickerController.m/h files. That's it.

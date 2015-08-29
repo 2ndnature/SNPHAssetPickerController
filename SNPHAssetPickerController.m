@@ -176,7 +176,7 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
     [self.collectionView registerClass:[SNPHAssetPickerAssetCell class] forCellWithReuseIdentifier:SNPHAssetPickerAssetCellIdentifier];
     [self.collectionView setBackgroundColor:[UIColor whiteColor]];
     [self updateCollectionViewLayoutAnimated:NO];
-    
+
     [self reloadAssets:self];
 
     [self updateNavigationItem];
@@ -185,13 +185,19 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    [self.navigationController setToolbarHidden:NO animated:animated];
+    if ([(SNPHAssetPickerController *)self.navigationController maximumPickableAssets] == NSIntegerMax)
+    {
+        [self.navigationController setToolbarHidden:NO animated:animated];
+    }
 }
 
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
-    [self.navigationController setToolbarHidden:YES animated:animated];
+    if ([(SNPHAssetPickerController *)self.navigationController maximumPickableAssets] == NSIntegerMax)
+    {
+        [self.navigationController setToolbarHidden:YES animated:animated];
+    }
 }
 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
@@ -205,21 +211,14 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 
 - (void)updateCollectionViewLayoutAnimated:(BOOL)animated
 {
-    NSUInteger minimumItemsPerRow = 4;
-    CGFloat maximumLength = MAXIMUM_ITEM_SIZE;
-    CGFloat minimumInteritemSpacing = 1.0;
-    
-    CGFloat length = (self.view.frame.size.width - ((minimumItemsPerRow - 1) * minimumInteritemSpacing)) / (float)minimumItemsPerRow;
-    if (length > maximumLength)
-    {
-        minimumItemsPerRow = self.view.frame.size.width / maximumLength;
-        length = (self.view.frame.size.width - ((minimumItemsPerRow - 1) * minimumInteritemSpacing)) / (float)minimumItemsPerRow;
-    }
+    NSUInteger minimumItemsPerRow = ceil(self.navigationController.view.frame.size.width / (float)MAXIMUM_ITEM_SIZE);
+    CGFloat minimumSpacing = 1.0;
+    CGFloat length = (self.navigationController.view.frame.size.width - ((minimumItemsPerRow - 1) * minimumSpacing)) / (float)minimumItemsPerRow;
     
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     [layout setScrollDirection:UICollectionViewScrollDirectionVertical];
-    [layout setMinimumInteritemSpacing:minimumInteritemSpacing];
-    [layout setMinimumLineSpacing:minimumInteritemSpacing];
+    [layout setMinimumInteritemSpacing:minimumSpacing];
+    [layout setMinimumLineSpacing:minimumSpacing];
     [layout setItemSize:CGSizeMake(length, length)];
     [self.collectionView setCollectionViewLayout:layout animated:animated];
 }
@@ -268,8 +267,8 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 {
     if ([self.picks count] == [self.assets count]) return;
     
-    self.picks = [self.assets mutableCopy];
-    [self.collectionView reloadData];
+    [self setPicks:[self.assets mutableCopy]];
+    [self refreshPicksOnVisibleCells];
     [self updateNavigationItem];
 }
 
@@ -294,8 +293,8 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
             }
             
         }];
-        self.picks = picks;
-        [self.collectionView reloadData];
+        [self setPicks:picks];
+        [self refreshPicksOnVisibleCells];
         [self updateNavigationItem];
     }
 }
@@ -304,9 +303,18 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 {
     if ([self.picks count] == 0) return;
     
-    self.picks = [NSMutableArray arrayWithCapacity:0];
-    [self.collectionView reloadData];
+    [self setPicks:[NSMutableArray arrayWithCapacity:0]];
+    [self refreshPicksOnVisibleCells];
     [self updateNavigationItem];
+}
+
+- (void)refreshPicksOnVisibleCells
+{
+    [[self.collectionView indexPathsForVisibleItems] enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull indexPath, NSUInteger idx, BOOL * _Nonnull stop) {
+        
+        [(SNPHAssetPickerAssetCell *)[self.collectionView cellForItemAtIndexPath:indexPath] setPicked:[self.picks containsObject:[self.assets objectAtIndex:indexPath.row]]];
+        
+    }];
 }
 
 - (void)updateNavigationItem
@@ -743,8 +751,9 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 {
     if ((self = [super initWithRootViewController:[[SNPHAssetPickerCollectionsViewController alloc] initWithStyle:UITableViewStylePlain]]))
     {
-        self.maximumPickableAssets = NSIntegerMax;
-        self.dismissHandler = dismissHandler;
+        [self setModalPresentationStyle:UIModalPresentationFormSheet];
+        [self setMaximumPickableAssets:NSIntegerMax];
+        [self setDismissHandler:dismissHandler];
     }
     return self;
 }
