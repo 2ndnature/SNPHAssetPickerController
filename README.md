@@ -3,15 +3,15 @@ Simple PHAsset picker for the Photos.framework
 
 Example usage:
 
-	SNPHAssetPickerController *picker = [[SNPHAssetPickerController alloc] initWithDismissHandler:^(NSArray<PHAsset *> *pickedPhotos, BOOL wasCancelled) {
+	SNPHAssetPickerController *picker = [[SNPHAssetPickerController alloc] initWithDismissHandler:^(NSArray<PHAsset *> *pickedAssets, BOOL wasCancelled) {
         
         if (wasCancelled == NO)
         {
-            NSLog(@"Picked %@", pickedPhotos);
+            NSLog(@"Picked %@", pickedAssets);
         }
         
     }];
-    [self presentViewController:picker animated:YES completion:NULL];
+    [self presentViewController:picker animated:YES completion:nil];
 
 To use it in your own project add the Photos.framework and the SNPHAssetPickerController.m/h files. That's it.
 
