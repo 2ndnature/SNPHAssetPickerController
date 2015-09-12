@@ -1,6 +1,5 @@
 //
 //  SNPHAssetPickerController.h
-//  SNPHAssetPickerController
 //
 //  Created by Brian Gerfort on 27/08/15.
 //  Copyright © 2015 2ndNature. All rights reserved.
@@ -12,9 +11,10 @@
 @interface SNPHAssetPickerController : UINavigationController
 
 @property (nonatomic, assign) BOOL onlyImages;
+@property (nonatomic, assign) BOOL askToIncludeRAW;
 @property (nonatomic, assign) NSInteger maximumPickableAssets;
 
-- (instancetype)initWithDismissHandler:(void (^)(NSArray<PHAsset *> *pickedAssets, BOOL wasCancelled))dismissHandler;
+- (instancetype)initWithDismissHandler:(void (^)(NSArray<PHAsset *> *pickedAssets, BOOL includeRAW, BOOL wasCancelled))dismissHandler;
 - (void)cancelPicker:(id)sender;
 
 @end

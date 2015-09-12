@@ -1,6 +1,5 @@
 //
 //  SNPHAssetPickerController.m
-//  SNPHAssetPickerController
 //
 //  Created by Brian Gerfort on 27/08/15.
 //  Copyright © 2015 2ndNature. All rights reserved.
@@ -15,9 +14,9 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 
 @interface SNPHAssetPickerController ()
 
-@property (nonatomic, copy) void (^dismissHandler)(NSArray<PHAsset *> *pickedPhotos, BOOL wasCancelled);
+@property (nonatomic, copy) void (^dismissHandler)(NSArray<PHAsset *> *pickedPhotos, BOOL includeRAW, BOOL wasCancelled);
 
-- (void)pickedAssets:(NSArray *)assets;
+- (void)pickedAssets:(NSArray *)assets includeRAW:(BOOL)includeRAW;
 
 @end
 
@@ -325,11 +324,58 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 
 - (void)pickAssets:(id)sender
 {
-    [(SNPHAssetPickerController *)self.navigationController pickedAssets:[self.picks sortedArrayUsingComparator:^NSComparisonResult(PHAsset *asset1, PHAsset *asset2) {
+    NSArray *sortedAssets = [self.picks sortedArrayUsingComparator:^NSComparisonResult(PHAsset *asset1, PHAsset *asset2) {
         
         return [[asset1 creationDate] compare:[asset2 creationDate]];
         
-    }]];
+    }];
+    
+    __block BOOL hasRAW = NO;
+    if ([(SNPHAssetPickerController *)self.navigationController askToIncludeRAW])
+    {
+        [self.picks enumerateObjectsUsingBlock:^(PHAsset *asset, NSUInteger idx, BOOL * _Nonnull stop) {
+            
+            [[PHAssetResource assetResourcesForAsset:asset] enumerateObjectsUsingBlock:^(PHAssetResource *assetResource, NSUInteger idx, BOOL * _Nonnull stop) {
+
+                if (assetResource.type == PHAssetResourceTypeAlternatePhoto)
+                {
+                    hasRAW = YES;
+                    *stop = YES;
+                }
+                
+            }];
+            if (hasRAW)
+            {
+                *stop = YES;
+            }
+            
+        }];
+    }
+    
+    if (hasRAW)
+    {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+        
+        [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Include RAW files", NULL) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            
+            [(SNPHAssetPickerController *)self.navigationController pickedAssets:sortedAssets includeRAW:YES];
+            
+        }]];
+        
+        [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Don't import RAW files", NULL) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            
+            [(SNPHAssetPickerController *)self.navigationController pickedAssets:sortedAssets includeRAW:NO];
+            
+        }]];
+        
+        [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", NULL) style:UIAlertActionStyleCancel handler:nil]];
+        
+        [self presentViewController:alert animated:YES completion:nil];
+    }
+    else
+    {
+        [(SNPHAssetPickerController *)self.navigationController pickedAssets:sortedAssets includeRAW:NO];
+    }
 }
 
 #pragma mark UICollectionView Delegate
@@ -575,13 +621,18 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
     [super viewDidLoad];
     
     [self setTitle:NSLocalizedString(@"Albums", NULL)];
-    [self.navigationItem setLeftBarButtonItem:[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:(SNPHAssetPickerController *)self.navigationController action:@selector(cancelPicker:)]];
     
     [self.tableView setRowHeight:89.0];
     [self.tableView setSeparatorStyle:UITableViewCellSeparatorStyleNone];
     [self setClearsSelectionOnViewWillAppear:YES];
 
     [self verifyAuthorizationStatus];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    [self.navigationItem setLeftBarButtonItem:(self.presentingViewController.traitCollection.horizontalSizeClass != UIUserInterfaceSizeClassRegular) ? [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:(SNPHAssetPickerController *)self.navigationController action:@selector(cancelPicker:)] : nil];
 }
 
 - (void)verifyAuthorizationStatus
@@ -601,7 +652,7 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
         {
             case PHAuthorizationStatusRestricted:
             {
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Sorry. The device settings does not allow access to the Photo Library.", NULL) message:nil preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"The device settings does not allow access to the Photo Library.", NULL) message:nil preferredStyle:UIAlertControllerStyleAlert];
                 [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", NULL) style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
 
                     [(SNPHAssetPickerController *)self.navigationController cancelPicker:self];
@@ -745,7 +796,7 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 
 @implementation SNPHAssetPickerController
 
-- (instancetype)initWithDismissHandler:(void (^)(NSArray<PHAsset *> *pickedAssets, BOOL wasCancelled))dismissHandler
+- (instancetype)initWithDismissHandler:(void (^)(NSArray<PHAsset *> *pickedAssets, BOOL includeRAW, BOOL wasCancelled))dismissHandler
 {
     if ((self = [super initWithRootViewController:[[SNPHAssetPickerCollectionsViewController alloc] initWithStyle:UITableViewStylePlain]]))
     {
@@ -756,13 +807,13 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
     return self;
 }
 
-- (void)pickedAssets:(NSArray *)assets
+- (void)pickedAssets:(NSArray *)assets includeRAW:(BOOL)includeRAW
 {
     [self dismissViewControllerAnimated:YES completion:^{
         
         if (self.dismissHandler != nil)
         {
-            self.dismissHandler(assets, NO);
+            self.dismissHandler(assets, includeRAW, NO);
         }
         
     }];
@@ -774,7 +825,7 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
         
         if (self.dismissHandler != nil)
         {
-            self.dismissHandler(nil, YES);
+            self.dismissHandler(nil, NO, YES);
         }
         
     }];
