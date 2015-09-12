@@ -632,7 +632,7 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    [self.navigationItem setLeftBarButtonItem:(self.presentingViewController.traitCollection.horizontalSizeClass != UIUserInterfaceSizeClassRegular) ? [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:(SNPHAssetPickerController *)self.navigationController action:@selector(cancelPicker:)] : nil];
+    [self.navigationItem setLeftBarButtonItem:(self.presentingViewController.traitCollection.horizontalSizeClass != UIUserInterfaceSizeClassRegular || self.navigationController.modalPresentationStyle != UIModalPresentationPopover) ? [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:(SNPHAssetPickerController *)self.navigationController action:@selector(cancelPicker:)] : nil];
 }
 
 - (void)verifyAuthorizationStatus
@@ -807,6 +807,11 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
     return self;
 }
 
+- (void)dealloc
+{
+    [self cleanUp];
+}
+
 - (void)pickedAssets:(NSArray *)assets includeRAW:(BOOL)includeRAW
 {
     [self dismissViewControllerAnimated:YES completion:^{
@@ -814,6 +819,7 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
         if (self.dismissHandler != nil)
         {
             self.dismissHandler(assets, includeRAW, NO);
+            self.dismissHandler = nil;
         }
         
     }];
@@ -823,12 +829,18 @@ NSString * const SNPHAssetPickerCollectionCellIdentifier = @"SNPHAssetPickerColl
 {
     [self dismissViewControllerAnimated:YES completion:^{
         
+        [self cleanUp];
+        
+    }];
+}
+
+- (void)cleanUp
+{
         if (self.dismissHandler != nil)
         {
             self.dismissHandler(nil, NO, YES);
+        self.dismissHandler = nil;
         }
-        
-    }];
 }
 
 @end
